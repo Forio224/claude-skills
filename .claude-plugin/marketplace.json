@@ -4,13 +4,12 @@
     "name": "Forio224"
   },
   "metadata": {
-    "description": "Личный маркетплейс навыков Claude Code — Forio224",
-    "pluginRoot": "./plugins"
+    "description": "Личный маркетплейс навыков Claude Code — Forio224"
   },
   "plugins": [
     {
       "name": "web-design",
-      "source": "web-design",
+      "source": "./plugins/web-design",
       "description": "Multivariant web design — на визуальную задачу собирает три заметно разных варианта дизайна (продуктовый / живой / характерный) для живого сравнения."
     }
   ]
