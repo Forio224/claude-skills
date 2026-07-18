@@ -1,0 +1,17 @@
+{
+  "name": "forio-skills",
+  "owner": {
+    "name": "Forio224"
+  },
+  "metadata": {
+    "description": "Личный маркетплейс навыков Claude Code — Forio224",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "web-design",
+      "source": "web-design",
+      "description": "Multivariant web design — на визуальную задачу собирает три заметно разных варианта дизайна (продуктовый / живой / характерный) для живого сравнения."
+    }
+  ]
+}
