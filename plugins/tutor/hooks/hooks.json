@@ -1,0 +1,38 @@
+{
+  "description": "Зеркало урока tutor в заметку Obsidian",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/lesson-log.mjs\" bind",
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/lesson-log.mjs\" flush",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/lesson-log.mjs\" flush",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}
