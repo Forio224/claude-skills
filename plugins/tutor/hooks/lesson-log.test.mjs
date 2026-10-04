@@ -276,6 +276,14 @@ test('bind не привязывает заметку, если в сессии 
   assert.doesNotMatch(fs.readFileSync(note, 'utf8'), /### Сессия/);
 });
 
+test('bind ничего не делает, если запись уроков выключена ("lessons": null)', (t) => {
+  const { env, note, transcript, write } = setup(t);
+  fs.writeFileSync(env.configPath, JSON.stringify({ lessons: null }));
+  write([userPrompt('начнём')]);
+  bind({ session_id: 's1', transcript_path: transcript, tool_name: 'Read', tool_input: { file_path: note } }, env);
+  assert.equal(fs.existsSync(path.join(env.stateDir, 's1.json')), false);
+});
+
 test('bind игнорирует файлы вне папки уроков и сессии без конфига', (t) => {
   const { env, transcript, write } = setup(t);
   write([userPrompt('x')]);
