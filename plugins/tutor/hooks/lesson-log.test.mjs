@@ -98,6 +98,24 @@ test('renderEntries: тест и ответ на него — отдельные
   assert.doesNotMatch(markdown, /file text/);
 });
 
+test('renderEntries: вызов теста, упавший на проверке входных данных, в заметку не попадает', () => {
+  const failed = {
+    type: 'user',
+    message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_1', is_error: true, content: 'InputValidationError' }] },
+    toolUseResult: 'InputValidationError: description is missing',
+  };
+  const entries = [
+    askUse(QUIZ),
+    failed,
+    askUse(QUIZ),
+    askResult(QUIZ, { 'Что вернёт f()?': '2' }),
+  ];
+  const { markdown } = renderEntries(entries, {});
+  assert.equal(markdown.match(/Что вернёт f/g).length, 1);
+  assert.doesNotMatch(markdown, /InputValidationError/);
+  assert.ok(markdown.indexOf('[!question]') < markdown.indexOf('[!example] Мой ответ'));
+});
+
 test('renderEntries: повтор одной и той же реплики подряд пишется один раз', () => {
   const { markdown } = renderEntries([userPrompt('дальше'), userPrompt('дальше')], {});
   assert.equal(markdown.match(/дальше/g).length, 1);

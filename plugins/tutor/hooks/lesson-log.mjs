@@ -106,15 +106,19 @@ function answerCallout(result) {
   return callout('example', 'Мой ответ', lines.join('\n'));
 }
 
+// Вопрос рисуется по результату, а не по вызову: вызов, упавший на проверке
+// входных данных или отклонённый, не оставляет в заметке вопроса без ответа.
+function quizBlocks(result) {
+  const answer = answerCallout(result);
+  return answer ? [...result.questions.map(questionCallout), answer] : [];
+}
+
 function assistantBlocks(entry, pendingSkip) {
   const blocks = [];
   for (const block of entry.message?.content ?? []) {
-    if (block.type === 'text') {
-      const text = block.text.trim();
-      if (text && !pendingSkip?.includes(text)) blocks.push(text);
-    } else if (block.type === 'tool_use' && block.name === 'AskUserQuestion') {
-      blocks.push(...(block.input?.questions ?? []).map(questionCallout));
-    }
+    if (block.type !== 'text') continue;
+    const text = block.text.trim();
+    if (text && !pendingSkip?.includes(text)) blocks.push(text);
   }
   return blocks;
 }
@@ -134,7 +138,7 @@ export function renderEntries(entries, state) {
     if (!entry || entry.isSidechain) continue;
     const rendered = entry.type === 'assistant'
       ? assistantBlocks(entry, pendingSkip)
-      : [answerCallout(entry.toolUseResult)].filter(Boolean);
+      : quizBlocks(entry.toolUseResult);
     if (rendered.length > 0) lastPrompt = undefined;
     blocks.push(...rendered);
   }
