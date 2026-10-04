@@ -10,14 +10,25 @@
 /plugin marketplace add Forio224/claude-skills
 /plugin install web-design@forio-skills
 /plugin install tutor@forio-skills
+/plugin install learned@forio-skills
 ```
 
 Первая команда регистрирует маркетплейс, остальные ставят плагины. После
 установки навыки доступны во всех проектах.
 
+Команды `/tutor`, `/learned`, `/recall` лежат не в плагинах, а в `commands/`:
+у команд плагина Claude Code всегда добавляет приставку (`/tutor:tutor`), а
+личные команды из `~/.claude/commands/` вызываются коротким именем. Поставить
+или обновить их — скопировать файлы:
+
+```bash
+cp commands/*.md ~/.claude/commands/
+```
+
 ## Обновление
 
-Навыки правятся здесь → `git push`. У пользователя новая версия прилетает после:
+Навыки правятся здесь → `git push`. Команды из `commands/` после правки
+копируются заново (см. выше). У пользователя новая версия навыков прилетает после:
 
 ```text
 /plugin marketplace update
@@ -32,6 +43,7 @@
 ## Как устроен репозиторий
 
 ```
+commands/                   # /tutor, /learned, /recall → копируются в ~/.claude/commands
 .claude-plugin/
   marketplace.json          # каталог: список всех плагинов и где их искать
 plugins/
