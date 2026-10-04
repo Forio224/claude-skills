@@ -5,7 +5,8 @@
 //                                заметку урока → сессия привязывается к ней.
 //   node lesson-log.mjs flush  — PostToolUse(AskUserQuestion) и Stop: всё новое из
 //                                транскрипта (реплики, объяснения, тесты, ответы)
-//                                дописывается в заметку.
+//                                дописывается в заметку. Если среди нового есть
+//                                «## Итог», в шапке обновляются дата повтора и сводка.
 //
 // Источник правды — транскрипт сессии: он хранит всё в порядке появления.
 // Транскрипт пишется с задержкой, поэтому flush на Stop ждёт, пока в нём появится
@@ -15,6 +16,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { extractSummary, applyHead } from './lesson-head.mjs';
 
 const CLAUDE_DIR = path.join(os.homedir(), '.claude');
 const DEFAULT_ENV = {
@@ -241,6 +243,13 @@ async function withLock(env, sessionId, fn) {
   }
 }
 
+function isTutorCall(entry) {
+  if (entry?.type !== 'assistant' || entry.isSidechain) return false;
+  return (entry.message?.content ?? []).some((block) => (
+    block.type === 'tool_use' && block.name === 'Skill' && /^(tutor:)?tutor$/.test(block.input?.skill ?? '')
+  ));
+}
+
 // --- команды хуков ---
 
 export function bind(input, env = DEFAULT_ENV) {
@@ -252,8 +261,12 @@ export function bind(input, env = DEFAULT_ENV) {
   const current = readJson(statePath(env, input.session_id));
   if (current && samePath(current.note, note)) return;
 
-  // Начинаем с реплики, которая запустила урок, — её тоже стоит видеть в заметке.
+  // Заметку урока читают и вне урока — например, когда правят сам навык.
+  // Привязываем, только если в сессии вызывали tutor.
   const entries = completeLines(input.transcript_path).map(parseLine);
+  if (!entries.some(isTutorCall)) return;
+
+  // Начинаем с реплики, которая запустила урок, — её тоже стоит видеть в заметке.
   const lastPrompt = entries.findLastIndex((entry) => promptText(entry) !== null);
   const cursor = lastPrompt === -1 ? entries.length : lastPrompt;
 
@@ -281,6 +294,11 @@ export async function flush(input, env = DEFAULT_ENV) {
     const { markdown, state: next } = renderEntries(lines.slice(state.cursor).map(parseLine), state);
     const output = late ? `${markdown}\n${expected}\n` : markdown;
     if (output) fs.appendFileSync(state.note, output);
+    const summary = output ? extractSummary(output) : null;
+    if (summary) {
+      const text = fs.readFileSync(state.note, 'utf8');
+      fs.writeFileSync(state.note, applyHead(text, summary, env.now ?? new Date()));
+    }
     writeState(env, input.session_id, {
       ...next,
       cursor: Math.max(state.cursor, lines.length),

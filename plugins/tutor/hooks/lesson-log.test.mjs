@@ -26,6 +26,10 @@ const askResult = (questions, answers, annotations = {}) => ({
   message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: 'answered' }] },
   toolUseResult: { questions, answers, annotations },
 });
+const tutorSkill = () => ({
+  type: 'assistant',
+  message: { role: 'assistant', content: [{ type: 'tool_use', id: 'toolu_0', name: 'Skill', input: { skill: 'tutor:tutor', args: 'тема: декораторы' } }] },
+});
 const readResult = () => ({
   type: 'user',
   message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_2', content: 'file text' }] },
@@ -168,7 +172,11 @@ function setup(t) {
   const note = path.join(lessons, 'Декораторы.md');
   fs.writeFileSync(note, '---\nтип: урок\nтема: Декораторы\n---\n# Декораторы\n');
   const transcript = path.join(root, 'session.jsonl');
-  const write = (entries) => fs.writeFileSync(transcript, entries.map((e) => JSON.stringify(e) + '\n').join(''));
+  // По умолчанию в сессии уже вызван навык tutor: без этого bind не привязывает заметку.
+  const write = (entries, { tutor = true } = {}) => fs.writeFileSync(
+    transcript,
+    [...(tutor ? [tutorSkill()] : []), ...entries].map((e) => JSON.stringify(e) + '\n').join(''),
+  );
   return { env, note, transcript, write };
 }
 
@@ -243,6 +251,29 @@ test('повторный bind той же заметки не сбрасывае
   const text = fs.readFileSync(note, 'utf8');
   assert.equal(text.match(/### Сессия/g).length, 1);
   assert.equal(text.match(/Поехали/g).length, 1);
+});
+
+test('итог урока ставит дату повтора и сводку в начало заметки, а сам итог дописывается в конец', async (t) => {
+  const { env, note, transcript, write } = setup(t);
+  const entries = [userPrompt('начнём')];
+  write(entries);
+  bind({ session_id: 's1', transcript_path: transcript, tool_name: 'Read', tool_input: { file_path: note } }, env);
+  entries.push(assistantText('## Итог\n- **Цель:** декораторы\n- **Повтор:** через 1 дн.\n\nДо завтра.'));
+  write(entries);
+  await flush({ session_id: 's1', transcript_path: transcript }, env);
+
+  const text = fs.readFileSync(note, 'utf8');
+  assert.match(text, /^---\nтип: урок\nтема: Декораторы\nповтор: 2026-10-01\n---\n# Декораторы\n\n%% сводка/);
+  assert.match(text, /## Сводка · итог 30\.09\.2026\n- \*\*Цель:\*\* декораторы\n- \*\*Повтор:\*\* через 1 дн\.\n%% \/сводка %%/);
+  assert.match(text, /### Сессия 30\.09\.2026 14:05\n[\s\S]*## Итог\n[\s\S]*До завтра\.\n$/);
+});
+
+test('bind не привязывает заметку, если в сессии не вызывали навык tutor', (t) => {
+  const { env, note, transcript, write } = setup(t);
+  write([userPrompt('правим хук'), assistantText('Читаю заметку урока для проверки.')], { tutor: false });
+  bind({ session_id: 's1', transcript_path: transcript, tool_name: 'Read', tool_input: { file_path: note } }, env);
+  assert.equal(fs.existsSync(path.join(env.stateDir, 's1.json')), false);
+  assert.doesNotMatch(fs.readFileSync(note, 'utf8'), /### Сессия/);
 });
 
 test('bind игнорирует файлы вне папки уроков и сессии без конфига', (t) => {
